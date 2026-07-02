@@ -66,7 +66,7 @@ def search_zipfile(database_path, term, search_dir=None):
                 continue
             with z.open(entry, "r") as f:
                 for i, line in enumerate(f):
-                    if term in str(line):
+                    if term in line.decode("utf-8", errors="replace"):
                         filename = remove_root_dir(entry.filename)
                         if not filename in results:
                             results[filename] = [i + 1]
@@ -104,7 +104,7 @@ def get_file(database_path, filename):
                 continue
             if remove_root_dir(entry.filename) == filename:
                 with z.open(entry, "r") as f:
-                    results = [line.rstrip() for line in f]
+                    results = [line.decode("utf-8", errors="replace").rstrip() for line in f]
                     return results
     return results
 
