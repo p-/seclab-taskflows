@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: GitHub, Inc.
 # SPDX-License-Identifier: MIT
 
+import os
 import tempfile
 import zipfile
 from pathlib import Path
@@ -75,7 +76,9 @@ class TestFetchFileContentTool:
     async def test_fetch_file_content_returns_decoded_numbered_lines(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             _make_zip_on_disk(tmp_dir, "owner", "repo", {"foo.py": SAMPLE})
-            with patch.object(lfv_mod, "LOCAL_GH_DIR", tmp_dir):
+            # Resolve symlinks (e.g. macOS /var -> /private/var) so the patched
+            # dir matches sanitize_file_path's os.path.realpath comparison.
+            with patch.object(lfv_mod, "LOCAL_GH_DIR", os.path.realpath(tmp_dir)):
                 result = await lfv_mod.fetch_file_content(owner="Owner", repo="Repo", path="foo.py")
             assert "1: import os" in result
             assert '2: print("héllo wörld")' in result
@@ -86,7 +89,9 @@ class TestFetchFileContentTool:
     async def test_get_file_lines_returns_decoded_range(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             _make_zip_on_disk(tmp_dir, "owner", "repo", {"foo.py": SAMPLE})
-            with patch.object(lfv_mod, "LOCAL_GH_DIR", tmp_dir):
+            # Resolve symlinks (e.g. macOS /var -> /private/var) so the patched
+            # dir matches sanitize_file_path's os.path.realpath comparison.
+            with patch.object(lfv_mod, "LOCAL_GH_DIR", os.path.realpath(tmp_dir)):
                 result = await lfv_mod.get_file_lines(
                     owner="owner", repo="repo", path="foo.py", start_line=2, length=1
                 )
