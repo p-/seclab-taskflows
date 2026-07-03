@@ -129,7 +129,7 @@ def search_zipfile(database_path, term):
                 continue
             with z.open(entry, "r") as f:
                 for i, line in enumerate(f):
-                    if term in str(line):
+                    if term in line.decode("utf-8", errors="replace"):
                         filename = remove_root_dir(entry.filename)
                         if not filename in results:
                             results[filename] = [i + 1]
