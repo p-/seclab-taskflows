@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: GitHub, Inc.
 # SPDX-License-Identifier: MIT
 
-import os
 import tempfile
 import zipfile
 from pathlib import Path
@@ -57,6 +56,18 @@ class TestSearchZipfileDecodesBytes:
             zip_path = _make_zip_on_disk(tmp_dir, "owner", "repo", {"foo.py": SAMPLE})
             results = search_zipfile(zip_path, "héllo")
             assert results == {"foo.py": [2]}
+
+    def test_search_handles_invalid_utf8_without_crashing(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            owner_dir = Path(tmp_dir) / "owner"
+            owner_dir.mkdir(parents=True)
+            zip_path = owner_dir / "repo.zip"
+            with zipfile.ZipFile(zip_path, "w") as zf:
+                zf.writestr(f"{ROOT}/bin.dat", b"good\n\xff\xfe match\n")
+            # errors="replace" means the invalid bytes must not raise and the
+            # searchable term on the same line is still matched.
+            results = search_zipfile(zip_path, "match")
+            assert results == {"bin.dat": [2]}
 
 
 class TestFetchFileContentTool:
