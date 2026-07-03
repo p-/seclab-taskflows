@@ -381,6 +381,36 @@ class TestHelpers:
         assert 2 in results["main.py"]
         assert "utils.py" not in results
 
+    def test_search_zipfile_matches_non_ascii_term(self):
+        zip_bytes = _make_zip_bytes({"main.py": 'import os\nprint("héllo wörld")\n'})
+        # Close the temp file before reopening it: on Windows a NamedTemporaryFile
+        # is locked and cannot be opened again by zipfile while still open.
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as f:
+            f.write(zip_bytes)
+            path = f.name
+        try:
+            results = gfv_mod.search_zipfile(path, "héllo")
+        finally:
+            os.unlink(path)
+        assert results == {"main.py": [2]}
+
+    def test_search_zipfile_handles_invalid_utf8_without_crashing(self):
+        # Invalid UTF-8 bytes must be decoded with errors="replace" rather than
+        # raising, and a valid term on the same line is still matched.
+        buf = BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("owner-repo-abc1234/bin.dat", b"good\n\xff\xfe match\n")
+        # Close the temp file before reopening it: on Windows a NamedTemporaryFile
+        # is locked and cannot be opened again by zipfile while still open.
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as f:
+            f.write(buf.getvalue())
+            path = f.name
+        try:
+            results = gfv_mod.search_zipfile(path, "match")
+        finally:
+            os.unlink(path)
+        assert results == {"bin.dat": [2]}
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
