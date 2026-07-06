@@ -2,13 +2,20 @@
 # SPDX-License-Identifier: MIT
 
 import subprocess
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 import seclab_taskflows.mcp_servers.container_shell as cs_mod
 from seclab_taskflow_agent.available_tools import AvailableTools
 from seclab_taskflow_agent.models import ToolboxDocument
+
+
+REPO_ROOT = Path(__file__).parents[1]
+AUDIT_TASKFLOW_DIR = REPO_ROOT / "src" / "seclab_taskflows" / "taskflows" / "audit"
+SAST_WORKSPACE_TEMPLATE = "{{ env('CONTAINER_WORKSPACE', required=False) or env('DATA_DIR') ~ '/repo_under_test' }}"
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +227,17 @@ class TestPersistentContainer:
                 name_b = cs_mod._persistent_name()
             assert name_a != name_b
 
+    def test_persistent_name_differs_for_different_workspaces(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
+            patch.object(cs_mod, "CONTAINER_PERSIST_KEY", ""),
+        ):
+            with patch.object(cs_mod, "CONTAINER_WORKSPACE", "/tmp/workspace-a"):
+                name_a = cs_mod._persistent_name()
+            with patch.object(cs_mod, "CONTAINER_WORKSPACE", "/tmp/workspace-b"):
+                name_b = cs_mod._persistent_name()
+            assert name_a != name_b
+
     def test_start_reuses_running_persistent_container(self):
         inspect_proc = _make_proc(
             returncode=0,
@@ -318,3 +336,18 @@ class TestToolboxYaml:
         result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_sast")
         assert result is not None
         assert isinstance(result, ToolboxDocument)
+
+    def test_sast_toolbox_mounts_fixed_repo_under_test_dir(self):
+        tools = AvailableTools()
+        result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_sast")
+        assert result.server_params.env["CONTAINER_WORKSPACE"] == SAST_WORKSPACE_TEMPLATE
+
+    def test_audit_sast_tasks_do_not_override_workspace(self):
+        for taskflow_path in AUDIT_TASKFLOW_DIR.glob("*.yaml"):
+            data = yaml.safe_load(taskflow_path.read_text())
+            for task_entry in data.get("taskflow", []):
+                task = task_entry.get("task", {})
+                toolboxes = task.get("toolboxes", [])
+                if "seclab_taskflows.toolboxes.container_shell_sast" not in toolboxes:
+                    continue
+                assert "CONTAINER_WORKSPACE" not in task.get("env", {}), taskflow_path

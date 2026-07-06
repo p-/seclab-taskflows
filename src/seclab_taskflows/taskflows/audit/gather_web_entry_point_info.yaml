@@ -20,12 +20,12 @@ taskflow:
       user_prompt: |
         For the repo {{ globals.repo }} iterate over all entry points and check if they are
         reachable as a server endpoint.
-        For this check the noted `file` and its line using the file viewer.
+        For this check the noted `file` and its line using the container shell.
         Then note its path, HTTP method and note any middlewares used. Also note which roles are
         allowed to call it. Note which kind of authentication is required for that endpoint.
         For each entry point identified as a web endpoint create a new web entry point using
         the information gathered.
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_sast
   

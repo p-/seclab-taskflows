@@ -11,9 +11,9 @@ server_params:
   args: ["-m", "seclab_taskflows.mcp_servers.container_shell"]
   env:
     CONTAINER_IMAGE: "seclab-shell-sast:latest"
-    CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) }}"
+    CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) or env('DATA_DIR') ~ '/repo_under_test' }}"
     CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '60') }}"
-    CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', required=False) }}"
+    CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', 'true') }}"
     CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
@@ -23,7 +23,8 @@ confirm:
 server_prompt: |
   ## Container Shell (SAST)
   You have access to an isolated Docker container for static analysis and code exploration.
-  Source code is available at /workspace. All tools run inside the container.
+  The configured source directory is mounted at /workspace. All tools run inside
+  the container, and the container is persistent across MCP server restarts by default.
 
   Available tools:
   - semgrep       — SAST scanner; run with `semgrep scan --config=auto /workspace`

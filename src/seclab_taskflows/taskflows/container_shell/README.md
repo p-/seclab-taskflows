@@ -46,13 +46,19 @@ Images only need to be rebuilt when a Dockerfile changes.
 
 ## Environment variables
 
-`CONTAINER_WORKSPACE` — host path to mount at `/workspace`. Optional; omit if
-you do not need to pass files into the container.
+`CONTAINER_WORKSPACE` — host path to mount at `/workspace`. The SAST toolbox
+defaults this to `DATA_DIR/repo_under_test`, where `local_gh_resources` extracts
+the repository currently under test, so only that repo is mounted into the
+container.
 
 `CONTAINER_TIMEOUT` — default command timeout in seconds. Defaults to 30 (base
 and network) or 60 (malware analysis and sast).
 
 `LOG_DIR` — where to write `container_shell.log`.
+
+`CONTAINER_PERSIST` — whether to leave the container running after the MCP
+server exits. The SAST toolbox defaults this to `true` so source indexes and
+other analysis state survive across audit task steps.
 
 ## Running the demos
 
@@ -125,8 +131,10 @@ confirmation in automated pipelines.
 
 - The container is shared across all `shell_exec` calls within a single
   taskflow run. State (files written, processes started) persists between calls.
+- The SAST toolbox keeps its container alive by default and reuses a persistent
+  container for the same image and mounted workspace.
 - `--rm` is set on `docker run`, so the container is removed automatically when
-  stopped.
+  stopped. Persistent containers are not started with `--rm`.
 - The container name follows the pattern `seclab-shell-<8 hex chars>` and is
   visible in `docker ps`.
 - If `docker run` fails (e.g. image not found), `shell_exec` returns an error

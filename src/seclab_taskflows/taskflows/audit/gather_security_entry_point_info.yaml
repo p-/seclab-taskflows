@@ -26,10 +26,10 @@ taskflow:
         Some functions 
         may have inputs that are related to configurations, such as a blacklist of disallowed inputs, or a list of allowed users or roles.
         These inputs are typically supplied by developers and should not be treated as untrusted inputs.
-        For this check the noted `file` and its line using the file viewer.
+        For this check the noted `file` and its line using the container shell.
         For each entry point identified as a security endpoint create a new security entry point using
         the information gathered.
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_sast
   

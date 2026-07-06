@@ -59,7 +59,7 @@ taskflow:
         If you think the issues satisfy the criteria, store a component issue entry for each type of issue identified.
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_sast
         - seclab_taskflows.toolboxes.ghsa
   - task:
       must_complete: true
@@ -112,5 +112,5 @@ taskflow:
         
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_sast
         - seclab_taskflows.toolboxes.ghsa
