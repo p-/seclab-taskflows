@@ -17,8 +17,8 @@ server_params:
     CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
-confirm:
-  - shell_exec
+# confirm:
+#   - shell_exec
 
 server_prompt: |
   ## Container Shell (SAST)
