@@ -27,5 +27,5 @@ taskflow:
         the information gathered.
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.container_shell_sast
+        - seclab_taskflows.toolboxes.container_shell_source_access
   
