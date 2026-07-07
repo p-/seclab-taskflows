@@ -6,7 +6,7 @@
 # Must be run from the root of the seclab-taskflows repository.
 # Images must be rebuilt whenever a Dockerfile changes.
 #
-# Usage: ./scripts/build_container_images.sh [base|malware|network|sast|all]
+# Usage: ./scripts/build_container_images.sh [base|malware|network|source-access|sast|all]
 #   default: all
 
 set -euo pipefail
@@ -30,6 +30,11 @@ build_network() {
     docker build -t seclab-shell-network-analysis:latest "${CONTAINERS_DIR}/network_analysis/"
 }
 
+build_source_access() {
+    echo "Building seclab-shell-source-access..."
+    docker build -t seclab-shell-source-access:latest "${CONTAINERS_DIR}/source_access/"
+}
+
 build_sast() {
     echo "Building seclab-shell-sast..."
     docker build -t seclab-shell-sast:latest "${CONTAINERS_DIR}/sast/"
@@ -49,6 +54,10 @@ case "$target" in
         build_base
         build_network
         ;;
+    source-access)
+        build_base
+        build_source_access
+        ;;
     sast)
         build_base
         build_sast
@@ -57,11 +66,12 @@ case "$target" in
         build_base
         build_malware
         build_network
+        build_source_access
         build_sast
         ;;
     *)
         echo "Unknown target: $target" >&2
-        echo "Usage: $0 [base|malware|network|sast|all]" >&2
+        echo "Usage: $0 [base|malware|network|source-access|sast|all]" >&2
         exit 1
         ;;
 esac

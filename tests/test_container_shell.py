@@ -331,6 +331,12 @@ class TestToolboxYaml:
         assert result is not None
         assert isinstance(result, ToolboxDocument)
 
+    def test_toolbox_yaml_valid_source_access(self):
+        tools = AvailableTools()
+        result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_source_access")
+        assert result is not None
+        assert isinstance(result, ToolboxDocument)
+
     def test_toolbox_yaml_valid_sast(self):
         tools = AvailableTools()
         result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_sast")
