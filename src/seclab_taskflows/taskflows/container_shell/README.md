@@ -4,7 +4,7 @@ Runs arbitrary CLI commands inside an isolated Docker container. One container
 per MCP server process — started on the first `shell_exec` call, stopped on
 exit. An optional host directory is mounted at `/workspace` inside the container.
 
-Four container profiles are provided. Each has its own Dockerfile, toolbox
+Different container profiles are provided. Each has its own Dockerfile, toolbox
 YAML, and demo taskflow.
 
 ## Profiles
@@ -20,6 +20,9 @@ yara, exiftool, checksec, capstone, pwntools, volatility3.
 **network-analysis** (`seclab-shell-network-analysis:latest`)
 Packet capture analysis and network recon. Extends base with nmap, tcpdump,
 tshark, netcat, dig, jq, httpie.
+
+**source-access** (`seclab-shell-source-access:latest`)
+Source access and code exploration. Tools to search and access source code. Does not extend base.
 
 **sast** (`seclab-shell-sast:latest`)
 Static analysis and code exploration. Extends base with semgrep, pyan3,
@@ -39,6 +42,7 @@ To build a single profile (the base image is always built first when needed):
 ./scripts/build_container_images.sh base
 ./scripts/build_container_images.sh malware
 ./scripts/build_container_images.sh network
+./scripts/build_container_images.sh source-access
 ./scripts/build_container_images.sh sast
 ```
 
@@ -50,9 +54,13 @@ Images only need to be rebuilt when a Dockerfile changes.
 you do not need to pass files into the container.
 
 `CONTAINER_TIMEOUT` — default command timeout in seconds. Defaults to 30 (base
-and network) or 60 (malware analysis and sast).
+and network) or 60 (malware analysis, source access, and sast).
 
 `LOG_DIR` — where to write `container_shell.log`.
+
+`CONTAINER_PERSIST` — whether to leave the container running after the MCP
+server exits. The source-access toolbox default this to `true` so
+source indexes and other analysis state survive across audit task steps.
 
 ## Running the demos
 
@@ -125,8 +133,10 @@ confirmation in automated pipelines.
 
 - The container is shared across all `shell_exec` calls within a single
   taskflow run. State (files written, processes started) persists between calls.
+- The source-access toolbox keeps its containers alive by default
+  and reuse persistent containers for the same image and mounted workspace.
 - `--rm` is set on `docker run`, so the container is removed automatically when
-  stopped.
+  stopped. Persistent containers are not started with `--rm`.
 - The container name follows the pattern `seclab-shell-<8 hex chars>` and is
   visible in `docker ps`.
 - If `docker run` fails (e.g. image not found), `shell_exec` returns an error
