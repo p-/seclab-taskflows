@@ -38,11 +38,11 @@ _DOCKER_TIMEOUT = 30
 def _persistent_name() -> str:
     """Derive a deterministic container name from the image for reuse across tasks.
 
-    Incorporates a hash of the full image reference (and optional
-    CONTAINER_PERSIST_KEY) to avoid collisions between long image names that
-    share a common prefix, or between independent runs of the same image.
+    Incorporates a hash of the full image reference, mounted workspace, and
+    optional CONTAINER_PERSIST_KEY to avoid collisions between independent runs
+    that use the same image with different source trees.
     """
-    key_material = CONTAINER_IMAGE
+    key_material = f"{CONTAINER_IMAGE}:{CONTAINER_WORKSPACE}"
     if CONTAINER_PERSIST_KEY:
         key_material += f":{CONTAINER_PERSIST_KEY}"
     digest = hashlib.sha256(key_material.encode()).hexdigest()[:12]
