@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: GitHub, Inc.
+# SPDX-License-Identifier: MIT
+
+seclab-taskflow-agent:
+  filetype: toolbox
+  version: "1.0"
+
+server_params:
+  kind: stdio
+  command: python
+  args: ["-m", "seclab_taskflows.mcp_servers.container_shell"]
+  env:
+    CONTAINER_IMAGE: "seclab-shell-source-access:latest"
+    CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) or env('DATA_DIR') ~ '/repo_under_test' }}"
+    CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '60') }}"
+    CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', 'true') }}"
+    CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
+    LOG_DIR: "{{ env('LOG_DIR') }}"
+
+server_prompt: |
+  ## Container Shell (Source Access)
+  You have access to an isolated Docker container for source access and code exploration.
+  The configured source directory is mounted at /workspace. All tools run inside
+  the container, and the container is persistent across MCP server restarts by default.
+
+  Available tools:
+  - ripgrep (rg)  — Fast regex search: `rg <pattern> /workspace`
+  - fd            — Fast file finder: `fd -e py /workspace`
+  - tree          — Directory structure: `tree /workspace`
+  - ctags         — Multi-language tag/symbol index (`ctags -R .`)
+  - global (gtags/global) — Source code cross-reference: `gtags` to index, `global -r <sym>` to find callers
+  - cscope        — C/C++ cross-reference browser (`cscope -R -b` to build, `cscope -R -L -2 <sym>` for callers)
+  - git           — Version control and source history inspection
+  - grep, sed, awk, find — Standard code exploration
+
+  Typical source access workflow:
+  1. `tree /workspace | head -80` — inspect the repository layout
+  2. `fd . /workspace | head -100` — list files quickly
+  3. `rg -n "<pattern>" /workspace` — search source text
+  4. `cd /workspace && ctags -R --fields=+ne .` — build a symbol index
+  5. `cd /workspace && gtags --compact && global -x <symbol>` — cross-reference symbols
