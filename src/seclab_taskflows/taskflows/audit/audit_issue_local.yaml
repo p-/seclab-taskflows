@@ -23,4 +23,4 @@ taskflow:
         {% include 'seclab_taskflows.prompts.audit.audit_issue' %}
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access

@@ -29,7 +29,7 @@ taskflow:
       model: code_analysis
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
       user_prompt: |
         The audit result has id {{ result.result_id }}. It is in the component with id {{ result.component_id }}
         at the location {{ result.location }}. It is in the repository {{ result.repo }}. 
