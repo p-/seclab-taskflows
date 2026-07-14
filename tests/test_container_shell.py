@@ -3,6 +3,7 @@
 
 import subprocess
 import importlib
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,6 +28,19 @@ def _make_proc(returncode=0, stdout="", stderr=""):
 def _reset_container():
     """Reset global container state between tests."""
     cs_mod._container_name = None
+
+
+def _restore_env_and_reload(var, original):
+    """Restore an env var to its pre-test value and reload cs_mod.
+
+    Reloading with the real environment (rather than the monkeypatched value)
+    keeps the module-level config from leaking into subsequent tests.
+    """
+    if original is None:
+        os.environ.pop(var, None)
+    else:
+        os.environ[var] = original
+    importlib.reload(cs_mod)
 
 
 # ---------------------------------------------------------------------------
@@ -115,21 +129,22 @@ class TestStartContainer:
             assert cmd[cmd.index("--network") + 1] == "bridge"
 
     def test_network_defaults_to_none_when_unset(self, monkeypatch):
+        original = os.environ.get("CONTAINER_NETWORK")
         monkeypatch.delenv("CONTAINER_NETWORK", raising=False)
-        reloaded = importlib.reload(cs_mod)
         try:
+            reloaded = importlib.reload(cs_mod)
             assert reloaded.CONTAINER_NETWORK == "none"
         finally:
-            importlib.reload(cs_mod)
+            _restore_env_and_reload("CONTAINER_NETWORK", original)
 
     def test_network_falls_back_to_none_when_blank(self, monkeypatch):
+        original = os.environ.get("CONTAINER_NETWORK")
         monkeypatch.setenv("CONTAINER_NETWORK", "   ")
-        reloaded = importlib.reload(cs_mod)
         try:
+            reloaded = importlib.reload(cs_mod)
             assert reloaded.CONTAINER_NETWORK == "none"
         finally:
-            monkeypatch.delenv("CONTAINER_NETWORK", raising=False)
-            importlib.reload(cs_mod)
+            _restore_env_and_reload("CONTAINER_NETWORK", original)
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +276,17 @@ class TestPersistentContainer:
             with patch.object(cs_mod, "CONTAINER_IMAGE", "image-b:latest"):
                 name_b = cs_mod._persistent_name()
             assert name_a != name_b
+
+    def test_persistent_name_varies_with_network(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
+            patch.object(cs_mod, "CONTAINER_PERSIST_KEY", ""),
+        ):
+            with patch.object(cs_mod, "CONTAINER_NETWORK", "none"):
+                name_none = cs_mod._persistent_name()
+            with patch.object(cs_mod, "CONTAINER_NETWORK", "bridge"):
+                name_bridge = cs_mod._persistent_name()
+            assert name_none != name_bridge
 
     def test_start_reuses_running_persistent_container(self):
         inspect_proc = _make_proc(

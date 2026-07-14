@@ -70,11 +70,15 @@ _DOCKER_TIMEOUT = 30
 def _persistent_name() -> str:
     """Derive a deterministic container name from the image for reuse across tasks.
 
-    Incorporates a hash of the full image reference (and optional
-    CONTAINER_PERSIST_KEY) to avoid collisions between long image names that
-    share a common prefix, or between independent runs of the same image.
+    Incorporates a hash of the full image reference, the configured network
+    mode, and an optional CONTAINER_PERSIST_KEY. Including the network mode
+    ensures a run configured for one network (e.g. the default "none") never
+    reuses a persistent container that was created with a different, more
+    permissive network (e.g. "bridge"), which would otherwise silently
+    re-enable egress. The hash also avoids collisions between long image names
+    that share a common prefix, or between independent runs of the same image.
     """
-    key_material = CONTAINER_IMAGE
+    key_material = f"{CONTAINER_IMAGE}:net={CONTAINER_NETWORK}"
     if CONTAINER_PERSIST_KEY:
         key_material += f":{CONTAINER_PERSIST_KEY}"
     digest = hashlib.sha256(key_material.encode()).hexdigest()[:12]
