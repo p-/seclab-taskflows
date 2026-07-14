@@ -15,6 +15,7 @@ server_params:
     CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '30') }}"
     CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', required=False) }}"
     CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
+    CONTAINER_NETWORK: "{{ env('CONTAINER_NETWORK', 'bridge') }}"
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
 confirm:

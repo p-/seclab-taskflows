@@ -30,6 +30,12 @@ CONTAINER_WORKSPACE = os.environ.get("CONTAINER_WORKSPACE", "")
 CONTAINER_TIMEOUT = int(os.environ.get("CONTAINER_TIMEOUT", "30"))
 CONTAINER_PERSIST = os.environ.get("CONTAINER_PERSIST", "").lower() in ("1", "true", "yes")
 CONTAINER_PERSIST_KEY = os.environ.get("CONTAINER_PERSIST_KEY", "")
+# Docker network mode for the container. Defaults to "none" so containers are
+# egress-locked (no network access) unless a caller explicitly opts in by
+# setting CONTAINER_NETWORK to a network name such as "bridge", "host", or a
+# user-defined network. An empty or whitespace-only value falls back to "none"
+# so the isolation default cannot be silently disabled by an unset variable.
+CONTAINER_NETWORK = os.environ.get("CONTAINER_NETWORK", "none").strip() or "none"
 
 _DEFAULT_WORKDIR = "/workspace"
 _DOCKER_TIMEOUT = 30
@@ -106,7 +112,7 @@ def _start_container() -> str:
     else:
         name = f"seclab-shell-{uuid.uuid4().hex[:8]}"
 
-    cmd = ["docker", "run", "-d", "--name", name]
+    cmd = ["docker", "run", "-d", "--name", name, "--network", CONTAINER_NETWORK]
     if not CONTAINER_PERSIST:
         cmd.append("--rm")
     if CONTAINER_WORKSPACE:

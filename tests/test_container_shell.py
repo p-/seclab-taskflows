@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import subprocess
+import importlib
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -88,6 +89,47 @@ class TestStartContainer:
         ):
             with pytest.raises(RuntimeError, match="CONTAINER_IMAGE is not set"):
                 cs_mod._start_container()
+
+    def test_start_container_default_network_none(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
+            patch.object(cs_mod, "CONTAINER_WORKSPACE", ""),
+            patch.object(cs_mod, "CONTAINER_NETWORK", "none"),
+            patch("subprocess.run", return_value=_make_proc(returncode=0)) as mock_run,
+        ):
+            cs_mod._start_container()
+            cmd = mock_run.call_args[0][0]
+            assert "--network" in cmd
+            assert cmd[cmd.index("--network") + 1] == "none"
+
+    def test_start_container_opt_in_network(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
+            patch.object(cs_mod, "CONTAINER_WORKSPACE", ""),
+            patch.object(cs_mod, "CONTAINER_NETWORK", "bridge"),
+            patch("subprocess.run", return_value=_make_proc(returncode=0)) as mock_run,
+        ):
+            cs_mod._start_container()
+            cmd = mock_run.call_args[0][0]
+            assert "--network" in cmd
+            assert cmd[cmd.index("--network") + 1] == "bridge"
+
+    def test_network_defaults_to_none_when_unset(self, monkeypatch):
+        monkeypatch.delenv("CONTAINER_NETWORK", raising=False)
+        reloaded = importlib.reload(cs_mod)
+        try:
+            assert reloaded.CONTAINER_NETWORK == "none"
+        finally:
+            importlib.reload(cs_mod)
+
+    def test_network_falls_back_to_none_when_blank(self, monkeypatch):
+        monkeypatch.setenv("CONTAINER_NETWORK", "   ")
+        reloaded = importlib.reload(cs_mod)
+        try:
+            assert reloaded.CONTAINER_NETWORK == "none"
+        finally:
+            monkeypatch.delenv("CONTAINER_NETWORK", raising=False)
+            importlib.reload(cs_mod)
 
 
 # ---------------------------------------------------------------------------
