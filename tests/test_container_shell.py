@@ -371,6 +371,63 @@ class TestPersistentContainer:
 
 
 # ---------------------------------------------------------------------------
+# Transport selection tests
+# ---------------------------------------------------------------------------
+
+class TestRunServer:
+    def test_default_transport_is_stdio(self, monkeypatch):
+        original = os.environ.get("CONTAINER_SHELL_TRANSPORT")
+        monkeypatch.delenv("CONTAINER_SHELL_TRANSPORT", raising=False)
+        try:
+            reloaded = _reload_cs()
+            assert reloaded.CONTAINER_SHELL_TRANSPORT == "stdio"
+        finally:
+            _restore_env_and_reload("CONTAINER_SHELL_TRANSPORT", original)
+
+    def test_blank_transport_falls_back_to_stdio(self, monkeypatch):
+        original = os.environ.get("CONTAINER_SHELL_TRANSPORT")
+        monkeypatch.setenv("CONTAINER_SHELL_TRANSPORT", "   ")
+        try:
+            reloaded = _reload_cs()
+            assert reloaded.CONTAINER_SHELL_TRANSPORT == "stdio"
+        finally:
+            _restore_env_and_reload("CONTAINER_SHELL_TRANSPORT", original)
+
+    def test_run_server_stdio_uses_stdio_call(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_SHELL_TRANSPORT", "stdio"),
+            patch.object(cs_mod.mcp, "run") as mock_run,
+        ):
+            cs_mod._run_server()
+            mock_run.assert_called_once_with(show_banner=False)
+
+    @pytest.mark.parametrize("transport", ["http", "streamable-http", "sse"])
+    def test_run_server_network_transport_binds_host_port(self, transport):
+        with (
+            patch.object(cs_mod, "CONTAINER_SHELL_TRANSPORT", transport),
+            patch.object(cs_mod, "CONTAINER_SHELL_HOST", "127.0.0.1"),
+            patch.object(cs_mod, "CONTAINER_SHELL_PORT", 9123),
+            patch.object(cs_mod.mcp, "run") as mock_run,
+        ):
+            cs_mod._run_server()
+            mock_run.assert_called_once_with(
+                transport=transport,
+                host="127.0.0.1",
+                port=9123,
+                show_banner=False,
+            )
+
+    def test_run_server_rejects_unknown_transport(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_SHELL_TRANSPORT", "carrier-pigeon"),
+            patch.object(cs_mod.mcp, "run") as mock_run,
+        ):
+            with pytest.raises(ValueError, match="Unsupported CONTAINER_SHELL_TRANSPORT"):
+                cs_mod._run_server()
+            mock_run.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
 # Toolbox YAML validation
 # ---------------------------------------------------------------------------
 

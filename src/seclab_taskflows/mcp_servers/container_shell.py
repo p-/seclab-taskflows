@@ -25,6 +25,19 @@ passthrough line to the toolbox ``env`` block, e.g.::
 A toolbox that needs networking by default (e.g. recon tooling) can use
 ``'bridge'`` as the template default instead. An empty or unset value always
 falls back to ``none``, so isolation cannot be disabled by a blank variable.
+
+Transport:
+
+- ``CONTAINER_SHELL_TRANSPORT`` — MCP transport. Defaults to ``stdio`` for the
+  standard local case where the agent launches this server as a subprocess. Set
+  it to ``http``, ``streamable-http``, or ``sse`` to run as a network-accessible
+  MCP server that a remote agent can connect to.
+- ``CONTAINER_SHELL_HOST`` / ``CONTAINER_SHELL_PORT`` — bind address for the
+  network transports (defaults ``127.0.0.1`` / ``8080``); ignored for ``stdio``.
+
+Which Docker daemon this server drives is orthogonal to the transport: the
+docker CLI honours ``DOCKER_HOST`` from the environment, so pointing this server
+at a specific (e.g. dedicated, isolated) daemon needs no code change here.
 """
 
 import atexit
@@ -62,6 +75,16 @@ CONTAINER_PERSIST_KEY = os.environ.get("CONTAINER_PERSIST_KEY", "")
 # user-defined network. An empty or whitespace-only value falls back to "none"
 # so the isolation default cannot be silently disabled by an unset variable.
 CONTAINER_NETWORK = os.environ.get("CONTAINER_NETWORK", "none").strip() or "none"
+# MCP transport selection. Defaults to "stdio" for the standard local case
+# where the agent launches this server as a subprocess. Set
+# CONTAINER_SHELL_TRANSPORT to "http", "streamable-http", or "sse" to run as a
+# network-accessible server (for example, an isolated sidecar reached by a
+# remote agent); CONTAINER_SHELL_HOST/PORT control the bind address for those
+# transports and are ignored for stdio.
+CONTAINER_SHELL_TRANSPORT = os.environ.get("CONTAINER_SHELL_TRANSPORT", "stdio").strip() or "stdio"
+CONTAINER_SHELL_HOST = os.environ.get("CONTAINER_SHELL_HOST", "127.0.0.1")
+CONTAINER_SHELL_PORT = int(os.environ.get("CONTAINER_SHELL_PORT", "8080"))
+_SUPPORTED_TRANSPORTS = ("stdio", "http", "streamable-http", "sse")
 
 _DEFAULT_WORKDIR = "/workspace"
 _DOCKER_TIMEOUT = 30
@@ -212,5 +235,29 @@ def shell_exec(
     return output
 
 
+def _run_server() -> None:
+    """Run the MCP server using the configured transport.
+
+    Defaults to stdio (local subprocess use). When CONTAINER_SHELL_TRANSPORT
+    selects a network transport, the server binds CONTAINER_SHELL_HOST:PORT so a
+    remote agent can reach it.
+    """
+    if CONTAINER_SHELL_TRANSPORT not in _SUPPORTED_TRANSPORTS:
+        msg = (
+            f"Unsupported CONTAINER_SHELL_TRANSPORT {CONTAINER_SHELL_TRANSPORT!r}; "
+            f"expected one of {', '.join(_SUPPORTED_TRANSPORTS)}"
+        )
+        raise ValueError(msg)
+    if CONTAINER_SHELL_TRANSPORT == "stdio":
+        mcp.run(show_banner=False)
+    else:
+        mcp.run(
+            transport=CONTAINER_SHELL_TRANSPORT,
+            host=CONTAINER_SHELL_HOST,
+            port=CONTAINER_SHELL_PORT,
+            show_banner=False,
+        )
+
+
 if __name__ == "__main__":
-    mcp.run(show_banner=False)
+    _run_server()
