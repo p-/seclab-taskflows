@@ -4,6 +4,7 @@
 import subprocess
 import importlib
 import os
+import atexit
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,6 +31,17 @@ def _reset_container():
     cs_mod._container_name = None
 
 
+def _reload_cs():
+    """Reload cs_mod without accumulating atexit handlers.
+
+    The module registers ``_stop_container`` with ``atexit`` at import time, so
+    reloading would stack a fresh handler each time. Unregister the current one
+    first so exactly one handler remains after the reload.
+    """
+    atexit.unregister(cs_mod._stop_container)
+    return importlib.reload(cs_mod)
+
+
 def _restore_env_and_reload(var, original):
     """Restore an env var to its pre-test value and reload cs_mod.
 
@@ -40,7 +52,7 @@ def _restore_env_and_reload(var, original):
         os.environ.pop(var, None)
     else:
         os.environ[var] = original
-    importlib.reload(cs_mod)
+    _reload_cs()
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +144,7 @@ class TestStartContainer:
         original = os.environ.get("CONTAINER_NETWORK")
         monkeypatch.delenv("CONTAINER_NETWORK", raising=False)
         try:
-            reloaded = importlib.reload(cs_mod)
+            reloaded = _reload_cs()
             assert reloaded.CONTAINER_NETWORK == "none"
         finally:
             _restore_env_and_reload("CONTAINER_NETWORK", original)
@@ -141,7 +153,7 @@ class TestStartContainer:
         original = os.environ.get("CONTAINER_NETWORK")
         monkeypatch.setenv("CONTAINER_NETWORK", "   ")
         try:
-            reloaded = importlib.reload(cs_mod)
+            reloaded = _reload_cs()
             assert reloaded.CONTAINER_NETWORK == "none"
         finally:
             _restore_env_and_reload("CONTAINER_NETWORK", original)
