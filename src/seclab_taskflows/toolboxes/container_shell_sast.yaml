@@ -19,7 +19,7 @@ server_params:
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
 confirm:
-  - shell_exec
+  - container_shell_exec
 
 server_prompt: |
   ## Container Shell (SAST)

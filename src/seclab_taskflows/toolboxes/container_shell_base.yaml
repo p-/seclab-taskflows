@@ -19,11 +19,11 @@ server_params:
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
 confirm:
-  - shell_exec
+  - container_shell_exec
 
 server_prompt: |
   ## Container Shell (base)
-  You have access to an isolated Docker container. Use `shell_exec` to run commands.
+  You have access to an isolated Docker container. Use `container_shell_exec` to run commands.
   The working directory is /workspace (mapped from the host workspace if configured).
 
   Available tools in this container:

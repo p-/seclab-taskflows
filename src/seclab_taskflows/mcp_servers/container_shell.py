@@ -208,7 +208,7 @@ atexit.register(_stop_container)
 
 
 @mcp.tool()
-def shell_exec(
+def container_shell_exec(
     command: Annotated[str, Field(description="Shell command to execute inside the container")],
     timeout: Annotated[int, Field(description="Timeout in seconds")] = CONTAINER_TIMEOUT,
     workdir: Annotated[str, Field(description="Working directory inside the container")] = _DEFAULT_WORKDIR,
