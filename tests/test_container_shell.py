@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: GitHub, Inc.
 # SPDX-License-Identifier: MIT
 
-import subprocess
+import atexit
 import importlib
 import os
-import atexit
+import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -149,9 +149,10 @@ class TestStartContainer:
         finally:
             _restore_env_and_reload("CONTAINER_NETWORK", original)
 
-    def test_network_falls_back_to_none_when_blank(self, monkeypatch):
+    @pytest.mark.parametrize("blank", ["", "   ", "\t"])
+    def test_network_falls_back_to_none_when_blank(self, monkeypatch, blank):
         original = os.environ.get("CONTAINER_NETWORK")
-        monkeypatch.setenv("CONTAINER_NETWORK", "   ")
+        monkeypatch.setenv("CONTAINER_NETWORK", blank)
         try:
             reloaded = _reload_cs()
             assert reloaded.CONTAINER_NETWORK == "none"
@@ -423,6 +424,28 @@ class TestRunServer:
             patch.object(cs_mod.mcp, "run") as mock_run,
         ):
             with pytest.raises(ValueError, match="Unsupported CONTAINER_SHELL_TRANSPORT"):
+                cs_mod._run_server()
+            mock_run.assert_not_called()
+
+    def test_invalid_port_does_not_break_stdio_import(self, monkeypatch):
+        original = os.environ.get("CONTAINER_SHELL_PORT")
+        monkeypatch.setenv("CONTAINER_SHELL_PORT", "notaport")
+        try:
+            reloaded = _reload_cs()
+            assert reloaded.CONTAINER_SHELL_PORT == "notaport"
+            with patch.object(reloaded.mcp, "run") as mock_run:
+                reloaded._run_server()
+            mock_run.assert_called_once_with(show_banner=False)
+        finally:
+            _restore_env_and_reload("CONTAINER_SHELL_PORT", original)
+
+    def test_invalid_port_raises_on_network_transport(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_SHELL_TRANSPORT", "http"),
+            patch.object(cs_mod, "CONTAINER_SHELL_PORT", "notaport"),
+            patch.object(cs_mod.mcp, "run") as mock_run,
+        ):
+            with pytest.raises(ValueError, match="Invalid CONTAINER_SHELL_PORT"):
                 cs_mod._run_server()
             mock_run.assert_not_called()
 

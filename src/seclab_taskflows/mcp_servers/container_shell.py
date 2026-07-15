@@ -83,7 +83,10 @@ CONTAINER_NETWORK = os.environ.get("CONTAINER_NETWORK", "none").strip() or "none
 # transports and are ignored for stdio.
 CONTAINER_SHELL_TRANSPORT = os.environ.get("CONTAINER_SHELL_TRANSPORT", "stdio").strip() or "stdio"
 CONTAINER_SHELL_HOST = os.environ.get("CONTAINER_SHELL_HOST", "127.0.0.1")
-CONTAINER_SHELL_PORT = int(os.environ.get("CONTAINER_SHELL_PORT", "8080"))
+# Kept as a raw string and parsed to an int lazily in _run_server() so an
+# invalid value only fails when a network transport is actually selected, not at
+# import time under the default stdio transport (where host/port are ignored).
+CONTAINER_SHELL_PORT = os.environ.get("CONTAINER_SHELL_PORT", "8080")
 _SUPPORTED_TRANSPORTS = ("stdio", "http", "streamable-http", "sse")
 
 _DEFAULT_WORKDIR = "/workspace"
@@ -251,10 +254,18 @@ def _run_server() -> None:
     if CONTAINER_SHELL_TRANSPORT == "stdio":
         mcp.run(show_banner=False)
     else:
+        try:
+            port = int(CONTAINER_SHELL_PORT)
+        except (TypeError, ValueError) as exc:
+            msg = (
+                f"Invalid CONTAINER_SHELL_PORT {CONTAINER_SHELL_PORT!r}; "
+                f"expected an integer for transport {CONTAINER_SHELL_TRANSPORT!r}"
+            )
+            raise ValueError(msg) from exc
         mcp.run(
             transport=CONTAINER_SHELL_TRANSPORT,
             host=CONTAINER_SHELL_HOST,
-            port=CONTAINER_SHELL_PORT,
+            port=port,
             show_banner=False,
         )
 
