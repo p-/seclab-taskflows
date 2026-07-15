@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: GitHub, Inc.
+# SPDX-License-Identifier: MIT
+
+seclab-taskflow-agent:
+  filetype: toolbox
+  version: "1.0"
+
+# Remote variant of the container shell. Instead of launching container_shell
+# as a local stdio subprocess (which needs a Docker socket in the agent
+# environment), this connects to a container_shell MCP server that is already
+# running elsewhere over Streamable HTTP. The server owns the Docker daemon; the
+# agent only speaks MCP to it. This is what lets an AWF-isolated agent use
+# containerized shell execution without ever being handed a Docker socket: the
+# server runs outside the sandbox and is reached over a single allowlisted host
+# service port.
+#
+# CONTAINER_SHELL_URL must point at the running server's Streamable HTTP
+# endpoint, for example http://host.docker.internal:8765/mcp/.
+server_params:
+  kind: streamable
+  url: "{{ env('CONTAINER_SHELL_URL') }}"
+
+confirm:
+  - container_shell_exec
+
+server_prompt: |
+  ## Container Shell (remote)
+  You have access to an isolated Docker container running on a remote shell
+  server. Use `container_shell_exec` to run commands inside it. The working
+  directory is /workspace (mapped from the host workspace if configured).
+
+  Available tools in this container:
+  - bash, coreutils (ls, cat, grep, find, sed, awk, sort, uniq, wc, ...)
+  - file: identify file type by magic bytes
+  - strings: extract printable strings from binary files
+  - objdump: disassemble and dump object/binary files
+  - readelf: display ELF binary structure
+  - nm: list symbols from object files
+  - xxd / hexdump: hex inspection
+  - python3: scripting
+  - curl / wget: HTTP requests
+  - git: version control
+
+  All commands run inside the container. Output includes stdout, stderr, and exit code.
