@@ -394,6 +394,16 @@ class TestRunServer:
         finally:
             _restore_env_and_reload("CONTAINER_SHELL_TRANSPORT", original)
 
+    @pytest.mark.parametrize("blank", ["", "   ", "\t"])
+    def test_host_falls_back_to_default_when_blank(self, monkeypatch, blank):
+        original = os.environ.get("CONTAINER_SHELL_HOST")
+        monkeypatch.setenv("CONTAINER_SHELL_HOST", blank)
+        try:
+            reloaded = _reload_cs()
+            assert reloaded.CONTAINER_SHELL_HOST == "127.0.0.1"
+        finally:
+            _restore_env_and_reload("CONTAINER_SHELL_HOST", original)
+
     def test_run_server_stdio_uses_stdio_call(self):
         with (
             patch.object(cs_mod, "CONTAINER_SHELL_TRANSPORT", "stdio"),
@@ -433,7 +443,10 @@ class TestRunServer:
         try:
             reloaded = _reload_cs()
             assert reloaded.CONTAINER_SHELL_PORT == "notaport"
-            with patch.object(reloaded.mcp, "run") as mock_run:
+            with (
+                patch.object(reloaded, "CONTAINER_SHELL_TRANSPORT", "stdio"),
+                patch.object(reloaded.mcp, "run") as mock_run,
+            ):
                 reloaded._run_server()
             mock_run.assert_called_once_with(show_banner=False)
         finally:

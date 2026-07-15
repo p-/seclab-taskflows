@@ -82,7 +82,7 @@ CONTAINER_NETWORK = os.environ.get("CONTAINER_NETWORK", "none").strip() or "none
 # remote agent); CONTAINER_SHELL_HOST/PORT control the bind address for those
 # transports and are ignored for stdio.
 CONTAINER_SHELL_TRANSPORT = os.environ.get("CONTAINER_SHELL_TRANSPORT", "stdio").strip() or "stdio"
-CONTAINER_SHELL_HOST = os.environ.get("CONTAINER_SHELL_HOST", "127.0.0.1")
+CONTAINER_SHELL_HOST = os.environ.get("CONTAINER_SHELL_HOST", "127.0.0.1").strip() or "127.0.0.1"
 # Kept as a raw string and parsed to an int lazily in _run_server() so an
 # invalid value only fails when a network transport is actually selected, not at
 # import time under the default stdio transport (where host/port are ignored).
