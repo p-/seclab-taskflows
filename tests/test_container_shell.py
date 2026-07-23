@@ -474,6 +474,12 @@ class TestToolboxYaml:
         assert result is not None
         assert isinstance(result, ToolboxDocument)
 
+    def test_toolbox_yaml_valid_remote(self):
+        tools = AvailableTools()
+        result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_remote")
+        assert result is not None
+        assert isinstance(result, ToolboxDocument)
+
     def test_toolbox_yaml_valid_malware(self):
         tools = AvailableTools()
         result = tools.get_toolbox("seclab_taskflows.toolboxes.container_shell_malware_analysis")
