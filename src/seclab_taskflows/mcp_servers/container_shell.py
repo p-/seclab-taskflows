@@ -11,14 +11,14 @@ toolbox YAML's ``server_params.env`` block):
 - ``CONTAINER_TIMEOUT`` — default per-command timeout in seconds (default 30).
 - ``CONTAINER_PERSIST`` — reuse a deterministic container across runs when truthy.
 - ``CONTAINER_PERSIST_KEY`` — extra key to distinguish persistent containers.
-- ``CONTAINER_NETWORK`` — Docker network mode for the container. Defaults to
+- ``CONTAINER_NETWORK`` — Docker network for the container. Defaults to
   ``none`` so the container is egress-locked. Set it to ``bridge``, ``host``, or
   a user-defined network to enable networking.
 
 Selecting a network mode from a toolbox: the agent passes only the toolbox's
 declared ``env`` entries to this server, so a network mode is selectable at run
-time only if the toolbox exposes the knob. To let callers opt in, add a
-passthrough line to the toolbox ``env`` block, e.g.::
+time only if the toolbox exposes the knob. To let callers opt in, add an
+environment variable passthrough line to the toolbox ``env`` block, e.g.::
 
     CONTAINER_NETWORK: "{{ env('CONTAINER_NETWORK', 'none') }}"
 

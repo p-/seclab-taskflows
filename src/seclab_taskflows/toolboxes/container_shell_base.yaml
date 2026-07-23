@@ -38,4 +38,8 @@ server_prompt: |
   - curl / wget  — HTTP requests
   - git          — version control
 
+  Networking is disabled by default: the container runs with `--network none`,
+  so `curl`, `wget`, and `git` remote operations fail unless this toolbox opts
+  in by setting `CONTAINER_NETWORK` (for example `bridge`).
+
   All commands run inside the container. Output includes stdout, stderr, and exit code.

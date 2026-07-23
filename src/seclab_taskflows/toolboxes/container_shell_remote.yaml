@@ -41,4 +41,8 @@ server_prompt: |
   - curl / wget: HTTP requests
   - git: version control
 
+  Outbound networking may be disabled by default: egress is controlled by the
+  remote server's `CONTAINER_NETWORK` setting, so `curl`, `wget`, and `git`
+  remote operations only work when the server has networking enabled.
+
   All commands run inside the container. Output includes stdout, stderr, and exit code.

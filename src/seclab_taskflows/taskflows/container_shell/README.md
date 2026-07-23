@@ -4,6 +4,10 @@ Runs arbitrary CLI commands inside an isolated Docker container. One container
 per MCP server process — started on the first `container_shell_exec` call, stopped on
 exit. An optional host directory is mounted at `/workspace` inside the container.
 
+By default the container is egress-locked: it runs with `--network none`, so
+outbound access (`curl`, `wget`, `git` remote operations) is disabled until a
+toolbox opts in by setting `CONTAINER_NETWORK` (for example `bridge`).
+
 Four container profiles are provided. Each has its own Dockerfile, toolbox
 YAML, and demo taskflow.
 
