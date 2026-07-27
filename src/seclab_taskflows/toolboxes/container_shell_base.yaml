@@ -15,14 +15,15 @@ server_params:
     CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '30') }}"
     CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', required=False) }}"
     CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
+    CONTAINER_NETWORK: "{{ env('CONTAINER_NETWORK', required=False) }}"
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
 confirm:
-  - shell_exec
+  - container_shell_exec
 
 server_prompt: |
   ## Container Shell (base)
-  You have access to an isolated Docker container. Use `shell_exec` to run commands.
+  You have access to an isolated Docker container. Use `container_shell_exec` to run commands.
   The working directory is /workspace (mapped from the host workspace if configured).
 
   Available tools in this container:
@@ -36,5 +37,9 @@ server_prompt: |
   - python3      — scripting
   - curl / wget  — HTTP requests
   - git          — version control
+
+  Networking is disabled by default: the container runs with `--network none`,
+  so `curl`, `wget`, and `git` remote operations fail unless this toolbox opts
+  in by setting `CONTAINER_NETWORK` (for example `bridge`).
 
   All commands run inside the container. Output includes stdout, stderr, and exit code.
