@@ -1,6 +1,45 @@
 # SPDX-FileCopyrightText: GitHub, Inc.
 # SPDX-License-Identifier: MIT
 
+"""MCP server that runs shell commands inside a managed Docker container.
+
+Configuration is read from the process environment (set per toolbox in the
+toolbox YAML's ``server_params.env`` block):
+
+- ``CONTAINER_IMAGE`` — image to run (required).
+- ``CONTAINER_WORKSPACE`` — host path bind-mounted at ``/workspace`` (optional).
+- ``CONTAINER_TIMEOUT`` — default per-command timeout in seconds (default 30).
+- ``CONTAINER_PERSIST`` — reuse a deterministic container across runs when truthy.
+- ``CONTAINER_PERSIST_KEY`` — extra key to distinguish persistent containers.
+- ``CONTAINER_NETWORK`` — Docker network for the container. Defaults to
+  ``none`` so the container is egress-locked. Set it to ``bridge``, ``host``, or
+  a user-defined network to enable networking.
+
+Selecting a network mode from a toolbox: the agent passes only the toolbox's
+declared ``env`` entries to this server, so a network mode is selectable at run
+time only if the toolbox exposes the knob. To let callers opt in, add an
+environment variable passthrough line to the toolbox ``env`` block, e.g.::
+
+    CONTAINER_NETWORK: "{{ env('CONTAINER_NETWORK', 'none') }}"
+
+A toolbox that needs networking by default (e.g. recon tooling) can use
+``'bridge'`` as the template default instead. An empty or unset value always
+falls back to ``none``, so isolation cannot be disabled by a blank variable.
+
+Transport:
+
+- ``CONTAINER_SHELL_TRANSPORT`` — MCP transport. Defaults to ``stdio`` for the
+  standard local case where the agent launches this server as a subprocess. Set
+  it to ``http``, ``streamable-http``, or ``sse`` to run as a network-accessible
+  MCP server that a remote agent can connect to.
+- ``CONTAINER_SHELL_HOST`` / ``CONTAINER_SHELL_PORT`` — bind address for the
+  network transports (defaults ``127.0.0.1`` / ``8080``); ignored for ``stdio``.
+
+Which Docker daemon this server drives is orthogonal to the transport: the
+docker CLI honours ``DOCKER_HOST`` from the environment, so pointing this server
+at a specific (e.g. dedicated, isolated) daemon needs no code change here.
+"""
+
 import atexit
 import hashlib
 import json
@@ -30,6 +69,25 @@ CONTAINER_WORKSPACE = os.environ.get("CONTAINER_WORKSPACE", "")
 CONTAINER_TIMEOUT = int(os.environ.get("CONTAINER_TIMEOUT", "30"))
 CONTAINER_PERSIST = os.environ.get("CONTAINER_PERSIST", "").lower() in ("1", "true", "yes")
 CONTAINER_PERSIST_KEY = os.environ.get("CONTAINER_PERSIST_KEY", "")
+# Docker network mode for the container. Defaults to "none" so containers are
+# egress-locked (no network access) unless a caller explicitly opts in by
+# setting CONTAINER_NETWORK to a network name such as "bridge", "host", or a
+# user-defined network. An empty or whitespace-only value falls back to "none"
+# so the isolation default cannot be silently disabled by an unset variable.
+CONTAINER_NETWORK = os.environ.get("CONTAINER_NETWORK", "none").strip() or "none"
+# MCP transport selection. Defaults to "stdio" for the standard local case
+# where the agent launches this server as a subprocess. Set
+# CONTAINER_SHELL_TRANSPORT to "http", "streamable-http", or "sse" to run as a
+# network-accessible server (for example, an isolated sidecar reached by a
+# remote agent); CONTAINER_SHELL_HOST/PORT control the bind address for those
+# transports and are ignored for stdio.
+CONTAINER_SHELL_TRANSPORT = os.environ.get("CONTAINER_SHELL_TRANSPORT", "stdio").strip() or "stdio"
+CONTAINER_SHELL_HOST = os.environ.get("CONTAINER_SHELL_HOST", "127.0.0.1").strip() or "127.0.0.1"
+# Kept as a raw string and parsed to an int lazily in _run_server() so an
+# invalid value only fails when a network transport is actually selected, not at
+# import time under the default stdio transport (where host/port are ignored).
+CONTAINER_SHELL_PORT = os.environ.get("CONTAINER_SHELL_PORT", "8080")
+_SUPPORTED_TRANSPORTS = ("stdio", "http", "streamable-http", "sse")
 
 _DEFAULT_WORKDIR = "/workspace"
 _DOCKER_TIMEOUT = 30
@@ -38,11 +96,12 @@ _DOCKER_TIMEOUT = 30
 def _persistent_name() -> str:
     """Derive a deterministic container name from the image for reuse across tasks.
 
-    Incorporates a hash of the full image reference, mounted workspace, and
-    optional CONTAINER_PERSIST_KEY to avoid collisions between independent runs
-    that use the same image with different source trees.
+    Incorporates a hash of the full image reference, mounted workspace,
+    configured network mode, and optional CONTAINER_PERSIST_KEY. This prevents
+    reuse across source trees or network configurations, including reuse of a
+    container with more permissive network access.
     """
-    key_material = f"{CONTAINER_IMAGE}:{CONTAINER_WORKSPACE}"
+    key_material = f"{CONTAINER_IMAGE}:{CONTAINER_WORKSPACE}:net={CONTAINER_NETWORK}"
     if CONTAINER_PERSIST_KEY:
         key_material += f":{CONTAINER_PERSIST_KEY}"
     digest = hashlib.sha256(key_material.encode()).hexdigest()[:12]
@@ -106,7 +165,7 @@ def _start_container() -> str:
     else:
         name = f"seclab-shell-{uuid.uuid4().hex[:8]}"
 
-    cmd = ["docker", "run", "-d", "--name", name]
+    cmd = ["docker", "run", "-d", "--name", name, "--network", CONTAINER_NETWORK]
     if not CONTAINER_PERSIST:
         cmd.append("--rm")
     if CONTAINER_WORKSPACE:
@@ -149,7 +208,7 @@ atexit.register(_stop_container)
 
 
 @mcp.tool()
-def shell_exec(
+def container_shell_exec(
     command: Annotated[str, Field(description="Shell command to execute inside the container")],
     timeout: Annotated[int, Field(description="Timeout in seconds")] = CONTAINER_TIMEOUT,
     workdir: Annotated[str, Field(description="Working directory inside the container")] = _DEFAULT_WORKDIR,
@@ -176,5 +235,37 @@ def shell_exec(
     return output
 
 
+def _run_server() -> None:
+    """Run the MCP server using the configured transport.
+
+    Defaults to stdio (local subprocess use). When CONTAINER_SHELL_TRANSPORT
+    selects a network transport, the server binds CONTAINER_SHELL_HOST:PORT so a
+    remote agent can reach it.
+    """
+    if CONTAINER_SHELL_TRANSPORT not in _SUPPORTED_TRANSPORTS:
+        msg = (
+            f"Unsupported CONTAINER_SHELL_TRANSPORT {CONTAINER_SHELL_TRANSPORT!r}; "
+            f"expected one of {', '.join(_SUPPORTED_TRANSPORTS)}"
+        )
+        raise ValueError(msg)
+    if CONTAINER_SHELL_TRANSPORT == "stdio":
+        mcp.run(show_banner=False)
+    else:
+        try:
+            port = int(CONTAINER_SHELL_PORT)
+        except (TypeError, ValueError) as exc:
+            msg = (
+                f"Invalid CONTAINER_SHELL_PORT {CONTAINER_SHELL_PORT!r}; "
+                f"expected an integer for transport {CONTAINER_SHELL_TRANSPORT!r}"
+            )
+            raise ValueError(msg) from exc
+        mcp.run(
+            transport=CONTAINER_SHELL_TRANSPORT,
+            host=CONTAINER_SHELL_HOST,
+            port=port,
+            show_banner=False,
+        )
+
+
 if __name__ == "__main__":
-    mcp.run(show_banner=False)
+    _run_server()

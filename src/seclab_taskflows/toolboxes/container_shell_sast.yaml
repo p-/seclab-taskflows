@@ -11,14 +11,15 @@ server_params:
   args: ["-m", "seclab_taskflows.mcp_servers.container_shell"]
   env:
     CONTAINER_IMAGE: "seclab-shell-sast:latest"
-    CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) }}"
+    CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) or env('DATA_DIR') ~ '/repo_under_test' }}"
     CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '60') }}"
     CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', required=False) }}"
     CONTAINER_PERSIST_KEY: "{{ env('CONTAINER_PERSIST_KEY', required=False) }}"
+    CONTAINER_NETWORK: "{{ env('CONTAINER_NETWORK', required=False) }}"
     LOG_DIR: "{{ env('LOG_DIR') }}"
 
 confirm:
-  - shell_exec
+  - container_shell_exec
 
 server_prompt: |
   ## Container Shell (SAST)

@@ -1,10 +1,14 @@
 # Container Shell Taskflows
 
 Runs arbitrary CLI commands inside an isolated Docker container. One container
-per MCP server process — started on the first `shell_exec` call, stopped on
+per MCP server process — started on the first `container_shell_exec` call, stopped on
 exit. An optional host directory is mounted at `/workspace` inside the container.
 
-Different container profiles are provided. Each has its own Dockerfile, toolbox
+By default the container is egress-locked: it runs with `--network none`, so
+outbound access (`curl`, `wget`, `git` remote operations) is disabled until a
+toolbox opts in by setting `CONTAINER_NETWORK` (for example `bridge`).
+
+Five container profiles are provided. Each has its own Dockerfile, toolbox
 YAML, and demo taskflow.
 
 ## Profiles
@@ -125,13 +129,13 @@ taskflow:
         Analyse the binary at /workspace/target.elf using static analysis only.
 ```
 
-`shell_exec` requires user confirmation by default (`confirm: [shell_exec]` in
+`container_shell_exec` requires user confirmation by default (`confirm: [container_shell_exec]` in
 all toolbox YAMLs). Pass `headless: true` at the task level to skip
 confirmation in automated pipelines.
 
 ## Notes
 
-- The container is shared across all `shell_exec` calls within a single
+- The container is shared across all `container_shell_exec` calls within a single
   taskflow run. State (files written, processes started) persists between calls.
 - The source-access toolbox keeps its containers alive by default
   and reuse persistent containers for the same image and mounted workspace.
@@ -139,5 +143,5 @@ confirmation in automated pipelines.
   stopped. Persistent containers are not started with `--rm`.
 - The container name follows the pattern `seclab-shell-<8 hex chars>` and is
   visible in `docker ps`.
-- If `docker run` fails (e.g. image not found), `shell_exec` returns an error
+- If `docker run` fails (e.g. image not found), `container_shell_exec` returns an error
   string rather than raising, so the agent can report the problem cleanly.
