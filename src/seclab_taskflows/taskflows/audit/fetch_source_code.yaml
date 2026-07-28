@@ -17,6 +17,7 @@ taskflow:
         - seclab_taskflow_agent.personalities.assistant
       model: general_tasks
       user_prompt: |
-        Fetch the source code of the repo {{ globals.repo }}.
+        Fetch and extract the source code of the repo {{ globals.repo }} for
+        container_shell analysis.
       toolboxes:
         - seclab_taskflows.toolboxes.local_gh_resources
