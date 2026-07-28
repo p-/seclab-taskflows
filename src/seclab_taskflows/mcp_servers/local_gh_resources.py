@@ -11,7 +11,6 @@ from pathlib import Path
 import shutil
 import aiofiles
 import zipfile
-import tempfile
 from seclab_taskflow_agent.path_utils import mcp_data_dir, log_file_name
 
 logging.basicConfig(
@@ -189,6 +188,9 @@ async def clear_local_repo(owner: str, repo: str):
         return f"Invalid {owner} and {repo}. Check that the input is correct or try to fetch the repo from gh first."
     if source_path.exists():
         os.remove(source_path)
+    metadata_path = sanitize_file_path(Path(LOCAL_GH_DIR) / owner / f"{repo}_source_metadata.json", [LOCAL_GH_DIR])
+    if metadata_path and metadata_path.exists():
+        os.remove(metadata_path)
     extracted_path = _source_extract_path(LOCAL_GH_DIR)
     extracted_path = sanitize_file_path(extracted_path, [LOCAL_GH_DIR])
     if extracted_path and extracted_path.exists():
