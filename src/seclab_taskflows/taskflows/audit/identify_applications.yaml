@@ -51,7 +51,7 @@ taskflow:
         
         Identify example, demo or test code in the repo. Skip analyzing these code and do not create a component entry for these.
       toolboxes:
-        - seclab_taskflows.toolboxes.gh_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
         - seclab_taskflows.toolboxes.repo_context
   
   - task:
@@ -111,7 +111,7 @@ taskflow:
         any situation where you are unsure about your results.
 
       toolboxes:
-        - seclab_taskflows.toolboxes.gh_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
         - seclab_taskflows.toolboxes.repo_context
   - task:
       must_complete: true
@@ -179,5 +179,5 @@ taskflow:
         any situation where you are unsure about your results.
 
       toolboxes:
-        - seclab_taskflows.toolboxes.gh_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
         - seclab_taskflows.toolboxes.repo_context
