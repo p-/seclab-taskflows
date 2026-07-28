@@ -39,7 +39,8 @@ taskflow:
       agents:
         - seclab_taskflow_agent.personalities.assistant
       user_prompt: |
-        Fetch the zipball of the repository {{ globals.repo }}.
+        Fetch and extract the source code of the repo {{ globals.repo }} for
+        container_shell analysis.
       toolboxes:
         - seclab_taskflows.toolboxes.local_gh_resources
   - task:

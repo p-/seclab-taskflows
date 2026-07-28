@@ -18,7 +18,8 @@ taskflow:
         - seclab_taskflow_agent.personalities.assistant
       user_prompt: |
         Clear the memory cache and clear the repo context results for repo {{ globals.repo }}. 
-        Fetch the source code of the repo {{ globals.repo }}.
+        Fetch and extract the source code of the repo {{ globals.repo }} for
+        container_shell analysis.
       toolboxes:
         - seclab_taskflow_agent.toolboxes.memcache
         - seclab_taskflows.toolboxes.repo_context
