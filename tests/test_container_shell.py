@@ -290,6 +290,17 @@ class TestPersistentContainer:
                 name_b = cs_mod._persistent_name()
             assert name_a != name_b
 
+    def test_persistent_name_differs_for_different_workspaces(self):
+        with (
+            patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
+            patch.object(cs_mod, "CONTAINER_PERSIST_KEY", ""),
+        ):
+            with patch.object(cs_mod, "CONTAINER_WORKSPACE", "/source/tree-a"):
+                name_a = cs_mod._persistent_name()
+            with patch.object(cs_mod, "CONTAINER_WORKSPACE", "/source/tree-b"):
+                name_b = cs_mod._persistent_name()
+            assert name_a != name_b
+
     def test_persistent_name_varies_with_network(self):
         with (
             patch.object(cs_mod, "CONTAINER_IMAGE", "test-image:latest"),
