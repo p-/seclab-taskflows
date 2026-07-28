@@ -62,7 +62,7 @@ you do not need to pass files into the container.
 `LOG_DIR` — where to write `container_shell.log`.
 
 `CONTAINER_PERSIST` — whether to leave the container running after the MCP
-server exits. The source-access toolbox default this to `true` so
+server exits. The source-access toolbox defaults this to `true` so
 source indexes and other analysis state survive across audit task steps.
 
 ## Running the demos
@@ -137,7 +137,7 @@ confirmation in automated pipelines.
 - The container is shared across all `container_shell_exec` calls within a single
   taskflow run. State (files written, processes started) persists between calls.
 - The source-access toolbox keeps its containers alive by default
-  and reuse persistent containers for the same image and mounted workspace.
+  and reuses persistent containers for the same image and mounted workspace.
 - `--rm` is set on `docker run`, so the container is removed automatically when
   stopped. Persistent containers are not started with `--rm`.
 - The container name follows the pattern `seclab-shell-<8 hex chars>` and is
