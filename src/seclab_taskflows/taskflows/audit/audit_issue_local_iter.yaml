@@ -55,5 +55,5 @@ taskflow:
         {% endif %}
       toolboxes:
         - seclab_taskflows.toolboxes.repo_context
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
         - seclab_taskflows.toolboxes.ghsa

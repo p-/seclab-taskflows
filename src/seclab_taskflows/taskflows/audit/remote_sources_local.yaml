@@ -83,7 +83,7 @@ taskflow:
         the error you encountered.
       toolboxes:
         - seclab_taskflows.toolboxes.codeql_python
-        - seclab_taskflows.toolboxes.local_file_viewer
+        - seclab_taskflows.toolboxes.container_shell_source_access
   - task:
       must_complete: true
       agents:
