@@ -68,7 +68,18 @@ We'd love to hear your feedback. Please [create an issue](https://github.com/Git
 
 ## Requirements
 
-Python >= 3.10 or Docker
+- Python >= 3.11 for local execution
+- Docker for container-backed taskflows
+
+The container images from `ghcr.io/githubsecuritylab/` use the `latest` tag.
+Because this tag is mutable, a locally cached image may become outdated and
+Docker may continue using it instead of the current registry image. Remove the
+local images before running a taskflow when you need to ensure that Docker pulls
+the latest versions:
+
+```bash
+docker rmi -f $(docker images --format '{{.Repository}}:{{.Tag}}' | grep '^ghcr.io/githubsecuritylab/')
+```
 
 ## License
 

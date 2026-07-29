@@ -10,7 +10,7 @@ server_params:
   command: python
   args: ["-m", "seclab_taskflows.mcp_servers.container_shell"]
   env:
-    CONTAINER_IMAGE: "seclab-shell-network-analysis:latest"
+    CONTAINER_IMAGE: "ghcr.io/githubsecuritylab/seclab-shell-network-analysis:latest"
     CONTAINER_WORKSPACE: "{{ env('CONTAINER_WORKSPACE', required=False) }}"
     CONTAINER_TIMEOUT: "{{ env('CONTAINER_TIMEOUT', '30') }}"
     CONTAINER_PERSIST: "{{ env('CONTAINER_PERSIST', required=False) }}"
