@@ -1,0 +1,79 @@
+name: Publish Container Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Additional image tag to publish
+        required: false
+        type: string
+  push:
+    branches: [ main ]
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
+    paths:
+      - .github/workflows/publish-container-images.yml
+      - scripts/build_container_images.sh
+      - src/seclab_taskflows/containers/**
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Build and publish container images
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Log in to GHCR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: echo "${GITHUB_TOKEN}" | docker login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+
+    - name: Build local container images
+      run: ./scripts/build_container_images.sh all
+
+    - name: Tag and push images
+      env:
+        CUSTOM_TAG: ${{ github.event.inputs.tag }}
+        IMAGE_NAMESPACE: ${{ github.repository_owner }}
+      run: |
+        set -euo pipefail
+
+        namespace="$(echo "${IMAGE_NAMESPACE}" | tr '[:upper:]' '[:lower:]')"
+        short_sha="${GITHUB_SHA::12}"
+        tags=("sha-${short_sha}")
+
+        if [[ "${GITHUB_REF_TYPE}" == "branch" && "${GITHUB_REF_NAME}" == "main" ]]; then
+          tags+=("latest")
+        fi
+
+        if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+          tags+=("${GITHUB_REF_NAME}")
+        fi
+
+        if [[ -n "${CUSTOM_TAG}" ]]; then
+          tags+=("${CUSTOM_TAG}")
+        fi
+
+        images=(
+          seclab-shell-base
+          seclab-shell-malware-analysis
+          seclab-shell-network-analysis
+          seclab-shell-source-access
+          seclab-shell-sast
+        )
+
+        for image in "${images[@]}"; do
+          remote="ghcr.io/${namespace}/${image}"
+          for tag in "${tags[@]}"; do
+            docker tag "${image}:latest" "${remote}:${tag}"
+            docker push "${remote}:${tag}"
+          done
+        done
