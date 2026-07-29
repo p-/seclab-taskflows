@@ -42,11 +42,9 @@ jobs:
     - name: Tag and push images
       env:
         CUSTOM_TAG: ${{ github.event.inputs.tag }}
-        IMAGE_NAMESPACE: ${{ github.repository_owner }}
       run: |
         set -euo pipefail
 
-        namespace="$(echo "${IMAGE_NAMESPACE}" | tr '[:upper:]' '[:lower:]')"
         short_sha="${GITHUB_SHA::12}"
         tags=("sha-${short_sha}")
 
@@ -63,17 +61,16 @@ jobs:
         fi
 
         images=(
-          seclab-shell-base
-          seclab-shell-malware-analysis
-          seclab-shell-network-analysis
-          seclab-shell-source-access
-          seclab-shell-sast
+          ghcr.io/githubsecuritylab/seclab-shell-base
+          ghcr.io/githubsecuritylab/seclab-shell-malware-analysis
+          ghcr.io/githubsecuritylab/seclab-shell-network-analysis
+          ghcr.io/githubsecuritylab/seclab-shell-source-access
+          ghcr.io/githubsecuritylab/seclab-shell-sast
         )
 
         for image in "${images[@]}"; do
-          remote="ghcr.io/${namespace}/${image}"
           for tag in "${tags[@]}"; do
-            docker tag "${image}:latest" "${remote}:${tag}"
-            docker push "${remote}:${tag}"
+            docker tag "${image}:latest" "${image}:${tag}"
+            docker push "${image}:${tag}"
           done
         done

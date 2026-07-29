@@ -13,22 +13,22 @@ YAML, and demo taskflow.
 
 ## Profiles
 
-**base** (`seclab-shell-base:latest`)
+**base** (`ghcr.io/githubsecuritylab/seclab-shell-base:latest`)
 General-purpose. Includes bash, coreutils, python3, file, binutils, xxd,
 curl, wget, git.
 
-**malware-analysis** (`seclab-shell-malware-analysis:latest`)
+**malware-analysis** (`ghcr.io/githubsecuritylab/seclab-shell-malware-analysis:latest`)
 Static binary and firmware analysis. Extends base with radare2, binwalk,
 yara, exiftool, checksec, capstone, pwntools, volatility3.
 
-**network-analysis** (`seclab-shell-network-analysis:latest`)
+**network-analysis** (`ghcr.io/githubsecuritylab/seclab-shell-network-analysis:latest`)
 Packet capture analysis and network recon. Extends base with nmap, tcpdump,
 tshark, netcat, dig, jq, httpie.
 
-**source-access** (`seclab-shell-source-access:latest`)
+**source-access** (`ghcr.io/githubsecuritylab/seclab-shell-source-access:latest`)
 Source access and code exploration. Tools to search and access source code. Does not extend base.
 
-**sast** (`seclab-shell-sast:latest`)
+**sast** (`ghcr.io/githubsecuritylab/seclab-shell-sast:latest`)
 Static analysis and code exploration. Extends base with semgrep, pyan3,
 universal-ctags, GNU global, cscope, graphviz, ripgrep, fd, tree.
 
