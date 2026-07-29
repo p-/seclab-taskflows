@@ -66,6 +66,7 @@ jobs:
           seclab-shell-base
           seclab-shell-malware-analysis
           seclab-shell-network-analysis
+          seclab-shell-source-access
           seclab-shell-sast
         )
 
