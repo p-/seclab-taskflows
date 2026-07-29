@@ -8,9 +8,9 @@ import httpx
 import json
 import os
 from pathlib import Path
+import shutil
 import aiofiles
 import zipfile
-import tempfile
 from seclab_taskflow_agent.path_utils import mcp_data_dir, log_file_name
 
 logging.basicConfig(
@@ -25,6 +25,7 @@ mcp = FastMCP("LocalGHResources")
 GH_TOKEN = os.getenv("GH_TOKEN")
 
 LOCAL_GH_DIR = mcp_data_dir("seclab-taskflows", "local_gh_resources", "LOCAL_GH_DIR")
+SOURCE_WORKSPACE_DIR = "repo_under_test"
 
 
 def is_subdirectory(directory, potential_subdirectory):
@@ -43,6 +44,42 @@ def sanitize_file_path(file_path, allow_paths):
         if is_subdirectory(allowed_path, file_path):
             return Path(file_path)
     return None
+
+
+def _source_archive_path(owner: str, repo: str, tmp_dir) -> Path:
+    return Path(tmp_dir) / owner / f"{repo}.zip"
+
+
+def _source_extract_path(tmp_dir) -> Path:
+    return Path(tmp_dir) / SOURCE_WORKSPACE_DIR
+
+
+def _safe_extract_source_zip(source_path: Path, target_dir: Path) -> None:
+    """Extract a GitHub zipball into a stable repo directory without its root prefix."""
+    if target_dir.exists() or target_dir.is_symlink():
+        if target_dir.is_symlink() or not target_dir.is_dir():
+            target_dir.unlink()
+        else:
+            shutil.rmtree(target_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_dir = target_dir.resolve()
+
+    with zipfile.ZipFile(source_path) as z:
+        for entry in z.infolist():
+            if entry.is_dir():
+                continue
+            entry_path = Path(entry.filename)
+            relative_parts = entry_path.parts[1:] if len(entry_path.parts) > 1 else entry_path.parts
+            if not relative_parts or any(part in ("", ".", "..") for part in relative_parts):
+                msg = f"Invalid path in source archive: {entry.filename}"
+                raise RuntimeError(msg)
+            destination = (target_dir / Path(*relative_parts)).resolve()
+            if os.path.commonpath([str(destination), str(target_dir)]) != str(target_dir):
+                msg = f"Invalid path in source archive: {entry.filename}"
+                raise RuntimeError(msg)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with z.open(entry, "r") as source, destination.open("wb") as dest:
+                shutil.copyfileobj(source, dest)
 
 
 async def call_api(url: str, params: dict) -> str:
@@ -97,21 +134,22 @@ async def _fetch_source_zip(owner: str, repo: str, tmp_dir):
                 response.raise_for_status()
                 content_disposition = response.headers.get("content-disposition")
                 source_filename = _parse_content_disposition_filename(content_disposition)
-                expected_path = Path(tmp_dir) / owner / f"{repo}.zip"
+                expected_path = _source_archive_path(owner, repo, tmp_dir)
                 resolved_path = expected_path.resolve()
                 if os.path.commonpath([resolved_path, Path(tmp_dir).resolve()]) != str(Path(tmp_dir).resolve()):
                     return f"Error: Invalid path for source code: {expected_path}"
                 if not Path(f"{tmp_dir}/{owner}").exists():
                     os.makedirs(f"{tmp_dir}/{owner}", exist_ok=True)
-                async with aiofiles.open(f"{tmp_dir}/{owner}/{repo}.zip", "wb") as f:
+                async with aiofiles.open(expected_path, "wb") as f:
                     async for chunk in response.aiter_bytes():
                         await f.write(chunk)
+        _safe_extract_source_zip(expected_path, _source_extract_path(tmp_dir))
         metadata = {"source_filename": source_filename}
         metadata_path = Path(tmp_dir) / owner / f"{repo}_source_metadata.json"
         async with aiofiles.open(metadata_path, "w") as f:
             await f.write(json.dumps(metadata, indent=2))
 
-        return f"source code for {repo} fetched successfully."
+        return f"source code for {repo} fetched and extracted successfully."
     except httpx.RequestError as e:
         return f"Error: Request error: {e}"
     except httpx.HTTPStatusError as e:
@@ -129,11 +167,11 @@ async def fetch_repo_from_gh(owner: str, repo: str):
     repo = repo.lower()
 
     result = await _fetch_source_zip(owner, repo, LOCAL_GH_DIR)
-    source_path = Path(f"{LOCAL_GH_DIR}/{owner}/{repo}.zip")
+    source_path = _source_archive_path(owner, repo, LOCAL_GH_DIR)
     if not source_path.exists():
         return result
 
-    return f"Downloaded source code to {owner}/{repo}.zip"
+    return f"Downloaded source code to {owner}/{repo}.zip and extracted it to {SOURCE_WORKSPACE_DIR}"
 
 
 @mcp.tool()
@@ -144,12 +182,19 @@ async def clear_local_repo(owner: str, repo: str):
     owner = owner.lower()
     repo = repo.lower()
 
-    source_path = Path(f"{LOCAL_GH_DIR}/{owner}/{repo}.zip")
+    source_path = _source_archive_path(owner, repo, LOCAL_GH_DIR)
     source_path = sanitize_file_path(source_path, [LOCAL_GH_DIR])
     if not source_path:
         return f"Invalid {owner} and {repo}. Check that the input is correct or try to fetch the repo from gh first."
     if source_path.exists():
         os.remove(source_path)
+    metadata_path = sanitize_file_path(Path(LOCAL_GH_DIR) / owner / f"{repo}_source_metadata.json", [LOCAL_GH_DIR])
+    if metadata_path and metadata_path.exists():
+        os.remove(metadata_path)
+    extracted_path = _source_extract_path(LOCAL_GH_DIR)
+    extracted_path = sanitize_file_path(extracted_path, [LOCAL_GH_DIR])
+    if extracted_path and extracted_path.exists():
+        shutil.rmtree(extracted_path)
     return f"Cleared the locally stored {owner}/{repo}"
 
 
