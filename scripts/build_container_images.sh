@@ -26,6 +26,8 @@ PUSH="${PUSH:-0}"
 IMAGE_TAGS="${IMAGE_TAGS:-latest}"
 BASE_IMAGE="${BASE_IMAGE:-${IMAGE_PREFIX}/seclab-shell-base:latest}"
 
+read -ra IMAGE_TAG_LIST <<< "${IMAGE_TAGS}"
+
 # build_image <image-name> <context-subdir> [extra docker buildx build args...]
 build_image() {
     local name="$1" context="$2"
@@ -33,7 +35,7 @@ build_image() {
     local image="${IMAGE_PREFIX}/${name}"
     local args=()
     local tag
-    for tag in ${IMAGE_TAGS}; do
+    for tag in "${IMAGE_TAG_LIST[@]}"; do
         args+=(--tag "${image}:${tag}")
     done
     if [[ "${PUSH}" == "1" ]]; then
